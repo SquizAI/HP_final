@@ -1,0 +1,656 @@
+import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { useUserProgress } from '../../utils/userDataManager'
+import { CheckCircle, Award, XCircle, Video, Mic, RotateCcw } from 'lucide-react'
+
+// Custom CSS for hiding scrollbars but allowing scrolling
+const scrollStyles = `
+  .hide-scrollbar {
+    -ms-overflow-style: none;  /* Internet Explorer and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari, Opera */
+  }
+
+  /* Mobile optimizations */
+  @media (max-width: 640px) {
+    .modality-pill {
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+      font-size: 0.65rem;
+    }
+    
+    .skill-level-pill {
+      font-size: 0.65rem;
+      padding: 0.15rem 0.5rem;
+    }
+    
+    .filter-pill {
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+      font-size: 0.7rem;
+    }
+  }
+`;
+
+// Define modality types and their colors
+const modalityTypes = {
+  voice: { name: 'Voice/Audio', color: '#2E7D32', icon: '🎙️' },
+  visual: { name: 'Visual/Image', color: '#673AB7', icon: '🖼️' },
+  business: { name: 'Business/Strategy', color: '#0097A7', icon: '🧠' },
+  biometrics: { name: 'Biometrics', color: '#607D8B', icon: '👤' },
+  text: { name: 'Text/Image', color: '#00796B', icon: '📝' },
+  language: { name: 'Language/Translation', color: '#3F51B5', icon: '🌐' },
+  model: { name: 'Model Comparison', color: '#0097A7', icon: '🤖' },
+  sentiment: { name: 'Sentiment/Analysis', color: '#4CAF50', icon: '😊' },
+  marketing: { name: 'Marketing/Strategy', color: '#E91E63', icon: '📱' },
+  security: { name: 'Security/Privacy', color: '#E91E63', icon: '🔒' },
+  presentation: { name: 'Presentation/Content', color: '#5CB2CC', icon: '🎬' },
+  generation: { name: 'Visual/Generation', color: '#8E44AD', icon: '✨' },
+  analytics: { name: 'Analytics/Insights', color: '#6200EA', icon: '📈' },
+  agent: { name: 'Multi-Agent Systems', color: '#6366F1', icon: '🕵️‍♂️' }
+}
+
+// Define skill levels and their colors
+const skillLevels = {
+  beginner: { name: 'Beginner', color: '#4CAF50' },
+  intermediate: { name: 'Intermediate', color: '#3F51B5' },
+  advanced: { name: 'Advanced', color: '#6200EA' }
+}
+
+const ChallengeHub: React.FC = () => {
+  // Get user progress from localStorage
+  const [userProgress, setUserProgress] = useUserProgress();
+  const [completionMessage, setCompletionMessage] = useState<{challengeId: string, message: string, isCompleted: boolean} | null>(null);
+  const [completedCount, setCompletedCount] = useState<number>(0);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+
+  // Function to check if a challenge is completed
+  const isCompleted = (challengeId: string): boolean => {
+    return userProgress?.completedChallenges?.includes(challengeId) || false;
+  };
+
+  // Function to get unique modality types from challenges
+  const getUniqueModalityTypes = () => {
+    return [...new Set(challenges.map(challenge => challenge.modality))].filter(Boolean);
+  };
+
+  // Function to get filtered challenges based on active filter
+  const getFilteredChallenges = () => {
+    if (!activeFilter) return sortedChallenges;
+    return sortedChallenges.filter(challenge => challenge.modality === activeFilter);
+  };
+  
+  // Functions to check challenge types
+  const isVoiceChallenge = (challenge: any) => {
+    return challenge.modality === 'voice';
+  };
+  
+  const isVideoChallenge = (challenge: any) => {
+    return challenge.modality === 'visual';
+  };
+  
+  // Function to check if a challenge is implemented
+  const isImplemented = (challengeId: string) => {
+    return [
+      'challenge-1', 'challenge-2', 'challenge-3', 'challenge-4', 'challenge-5',
+      'challenge-6', 'challenge-7', 'challenge-8', 'challenge-9', 'challenge-10', 'challenge-11',
+      'challenge-ocr', 'challenge-creative-vision', 'challenge-object-detection',
+      'challenge-sentiment', 'challenge-marketing-assistant', 'challenge-privacy-guardian',
+      'challenge-virtual-presenter', 'challenge-data-insights', 'challenge-multi-agent'
+    ].includes(challengeId);
+  };
+  
+  // Handler functions for challenge completion
+  const handleMarkAsCompleted = (challengeId: string, challengeTitle: string) => {
+    if (userProgress) {
+      const updatedChallenges = [...(userProgress.completedChallenges || []), challengeId];
+      setUserProgress({ ...userProgress, completedChallenges: updatedChallenges });
+      setCompletionMessage({
+        challengeId, 
+        message: `Marked "${challengeTitle}" as completed!`, 
+        isCompleted: true
+      });
+      // Clear message after 3 seconds
+      setTimeout(() => setCompletionMessage(null), 3000);
+    }
+  };
+  
+  const handleUncheckChallenge = (challengeId: string, challengeTitle: string) => {
+    if (userProgress) {
+      const updatedChallenges = (userProgress.completedChallenges || []).filter(id => id !== challengeId);
+      setUserProgress({ ...userProgress, completedChallenges: updatedChallenges });
+      setCompletionMessage({
+        challengeId, 
+        message: `"${challengeTitle}" marked as incomplete`, 
+        isCompleted: false
+      });
+      // Clear message after 3 seconds
+      setTimeout(() => setCompletionMessage(null), 3000);
+    }
+  };
+  
+  // Calculate completed count
+  useEffect(() => {
+    if (userProgress?.completedChallenges) {
+      setCompletedCount(userProgress.completedChallenges.length);
+    }
+  }, [userProgress]);
+  
+  // Add CSS styles to document head
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = scrollStyles;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+  
+  // Standard challenges with new ordering and numbering
+  const challenges = [
+    {
+      id: 'challenge-10',
+      challengeNumber: 1,
+      title: 'AI Dictation Wizard',
+      description: "Transform speech to text, translate to any language, and convert back to voice—all with powerful AI.",
+      icon: '🎙️',
+      color: '#2E7D32',
+      path: '/challenge/dictation-wizard',
+      skillLevel: 'beginner',
+      modality: 'voice'
+    },
+    {
+      id: 'challenge-creative-vision',
+      challengeNumber: 2,
+      title: 'Creative Vision AI',
+      description: "Transform your ideas into stunning visuals with AI-powered text-to-image generation.",
+      icon: '✨',
+      color: '#8E44AD',
+      path: '/challenge/creative-vision',
+      skillLevel: 'intermediate',
+      modality: 'generation'
+    },
+    {
+      id: 'challenge-11',
+      challengeNumber: 3,
+      title: 'AI Image Classifier',
+      description: "Instantly classify images, detect objects, and extract visual insights using AI vision technologies.",
+      icon: '🔍',
+      color: '#5E35B1',
+      path: '/challenge/image-classifier',
+      skillLevel: 'beginner',
+      modality: 'visual'
+    },
+    {
+      id: 'challenge-1',
+      challengeNumber: 4,
+      title: 'AI Biz Strategist',
+      description: "Create business strategies so smart, your competition will think you hired MBA-wielding psychics.",
+      icon: '🧠',
+      color: '#0097A7',
+      path: '/challenge/bizstrategist',
+      skillLevel: 'advanced',
+      modality: 'business'
+    },
+    {
+      id: 'challenge-7',
+      challengeNumber: 5,
+      title: 'Facial Recognition System',
+      description: "Experience facial biometric authentication and learn how facial recognition technology works.",
+      icon: '👤',
+      color: '#607D8B',
+      path: '/challenge/face-id-manager',
+      skillLevel: 'intermediate',
+      modality: 'biometrics'
+    },
+    {
+      id: 'challenge-9',
+      challengeNumber: 6,
+      title: 'AI Voice Generator Pro',
+      description: "Create professional voiceovers, consistent brand voices, and accessibility features through AI-powered text-to-speech.",
+      icon: '🔊',
+      color: '#FF5722',
+      path: '/challenge/voice-generator',
+      skillLevel: 'beginner',
+      modality: 'voice'
+    },
+    {
+      id: 'challenge-ocr',
+      challengeNumber: 7,
+      title: 'AI OCR Assistant',
+      description: "Convert printed or handwritten text from images into editable digital text.",
+      icon: '📝',
+      color: '#00796B',
+      path: '/challenge/ocr-assistant',
+      skillLevel: 'beginner',
+      modality: 'text'
+    },
+    {
+      id: 'challenge-5',
+      challengeNumber: 8,
+      title: 'AI Global Communicator',
+      description: "Break language barriers and navigate cross-cultural communication with AI that understands cultural nuances.",
+      icon: '🌐',
+      color: '#3F51B5',
+      path: '/challenge/global-communicator',
+      skillLevel: 'intermediate',
+      modality: 'language'
+    },
+    {
+      id: 'challenge-object-detection',
+      challengeNumber: 9,
+      title: 'AI Object Detection',
+      description: "Detect and locate multiple objects in images with bounding boxes and confidence scores.",
+      icon: '🔍',
+      color: '#673AB7',
+      path: '/challenge/object-detection',
+      skillLevel: 'intermediate',
+      modality: 'visual'
+    },
+    {
+      id: 'challenge-2',
+      challengeNumber: 10,
+      title: 'AI Smart Select',
+      description: "Compare AI models to determine the optimal choice for different business scenarios based on response quality and cost.",
+      icon: '🤖',
+      color: '#0097A7',
+      path: '/challenge/smartselect',
+      skillLevel: 'advanced',
+      modality: 'model'
+    },
+    {
+      id: 'challenge-8',
+      challengeNumber: 11,
+      title: 'AI Emotional Insight',
+      description: "Analyze emotions in content and learn how emotion recognition can transform business interactions.",
+      icon: '😊',
+      color: '#4CAF50',
+      path: '/challenge/emotional-insight',
+      skillLevel: 'intermediate',
+      modality: 'sentiment'
+    },
+    {
+      id: 'challenge-4',
+      challengeNumber: 12,
+      title: 'AI Social Media Strategist',
+      description: "Build a comprehensive social media strategy with AI assistance that would make marketing agencies jealous.",
+      icon: '📱',
+      color: '#E91E63',
+      path: '/challenge/social-media-strategist',
+      skillLevel: 'advanced',
+      modality: 'marketing'
+    },
+    {
+      id: 'challenge-privacy-guardian',
+      challengeNumber: 13,
+      title: 'AI Privacy Guardian',
+      description: "Protect privacy by automatically detecting and blurring faces in images with intelligent face recognition.",
+      icon: '🔒',
+      color: '#E91E63',
+      path: '/challenge/privacy-guardian',
+      skillLevel: 'intermediate',
+      modality: 'security'
+    },
+    {
+      id: 'challenge-6',
+      challengeNumber: 14,
+      title: 'AI Slide Master',
+      description: "Create presentations that make people forget they're watching slides, not a blockbuster movie.",
+      icon: '🎬',
+      color: '#5CB2CC',
+      path: '/challenge/slidemaster',
+      skillLevel: 'intermediate',
+      modality: 'presentation'
+    },
+    {
+      id: 'challenge-3',
+      challengeNumber: 15,
+      title: 'AI Data Analyst',
+      description: "Turn mountains of data into gold mines of insights—no statistician required!",
+      icon: '📈',
+      color: '#6200EA',
+      path: '/challenge/dataanalyst',
+      skillLevel: 'advanced',
+      modality: 'analytics'
+    },
+    {
+      id: 'challenge-agent-magic',
+      challengeNumber: 16,
+      title: 'Agent Magic',
+      description: "Harness the power of specialized AI agents in business workflows to deliver exceptional value through collaborative intelligence.",
+      icon: '✨',
+      color: '#6366F1',
+      path: '/challenge/agent-magic',
+      skillLevel: 'advanced',
+      modality: 'agent'
+    }
+  ]
+  
+  // Additional challenges section
+  /* Commented out as it's not currently used
+  const additionalChallenges = [
+    {
+      id: 'additional-challenge-1',
+      challengeNumber: 1,
+      title: 'AI Trend Spotter',
+      description: "Discover tomorrow's trends today—before your competitors' crystal ball starts working!",
+      icon: '🔮',
+      color: '#5CB2CC',
+      path: '/challenge/trendspotter'
+    },
+    {
+      id: 'additional-challenge-2',
+      challengeNumber: 2,
+      title: 'AI Service Pro',
+      description: "Turn IT headaches into high-fives with AI that actually understands your tech support woes.",
+      icon: '🦸',
+      color: '#FF7F50',
+      path: '/challenge/servicepro'
+    },
+    {
+      id: 'additional-challenge-3',
+      challengeNumber: 3,
+      title: 'AI Meeting Genius',
+      description: "Make meetings so efficient, you'll actually look forward to them. (Yes, seriously!)",
+      icon: '⏱️',
+      color: '#5CB2CC',
+      path: '/challenge/meetinggenius'
+    },
+    {
+      id: 'additional-challenge-4',
+      challengeNumber: 4,
+      title: 'AI Brainstorm Buddy',
+      description: "Generate brilliantly creative solutions to your toughest business challenges—faster than a room full of consultants!",
+      icon: '💡',
+      color: '#FF9800',
+      path: '/challenge/brainstormbuddy'
+    },
+    {
+      id: 'additional-challenge-5',
+      challengeNumber: 5,
+      title: 'AI Communication Coach',
+      description: "Write emails so good they'll think you have a tiny Shakespeare in your keyboard.",
+      icon: '✉️',
+      color: '#FF7F50',
+      path: '/challenge/communicationcoach'
+    },
+    {
+      id: 'additional-challenge-6',
+      challengeNumber: 6,
+      title: 'AI Policy Decoder',
+      description: "Turn corporate jargon into actual human language—no legal degree required!",
+      icon: '🔍',
+      color: '#0097A7',
+      path: '/challenge/policydecoder'
+    },
+    {
+      id: 'additional-challenge-7',
+      challengeNumber: 7,
+      title: 'AI Ad Creative Wizard',
+      description: "Craft ads so engaging, people will voluntarily turn off their ad blockers. Magic!",
+      icon: '✨',
+      color: '#FF7F50',
+      path: '/challenge/adcreative'
+    },
+    {
+      id: 'additional-challenge-8',
+      challengeNumber: 8,
+      title: 'AI Content Transformer',
+      description: "Transform plain content into engaging, interactive experiences that captivate your audience and leave a lasting impression.",
+      icon: '✏️',
+      color: '#8E44AD',
+      path: '/challenge/content-transformer'
+    },
+    {
+      id: 'additional-challenge-9',
+      challengeNumber: 9,
+      title: 'AI Visual Search Explorer',
+      description: "Upload images and discover relevant search queries, information, and visual insights powered by Google's Gemini 2.0 Flash.",
+      icon: '🔎',
+      color: '#1E88E5',
+      path: '/challenge/image-search'
+    },
+    {
+      id: 'additional-challenge-10',
+      challengeNumber: 10,
+      title: 'AI Detective League',
+      description: "Experience how AI agents collaborate, use specialized tools, and solve complex problems as a team.",
+      icon: '🕵️‍♂️',
+      color: '#5E35B1',
+      path: '/challenge/detective-league'
+    }
+  ]
+
+  // HP Challenges - unchanged
+  const hpChallenges = [
+    {
+      id: 'challenge-hp-powerbi',
+      challengeNumber: 1,
+      title: 'HP Challenge 1: Power BI Challenge – AI Data Detective',
+      description: "Use Power BI's AI features to discover meaningful business insights without needing advanced analytics knowledge.",
+      icon: '📊',
+      color: '#0096D6',
+      path: '/challenge/hp-powerbi',
+      skillLevel: 'intermediate',
+      modality: 'analytics'
+    },
+    {
+      id: 'challenge-hp-companion',
+      challengeNumber: 2,
+      title: 'HP Challenge 2: HP AI Companion – Instant Summarizer',
+      description: "Use HP AI Companion to quickly extract key points and action items from lengthy documents and emails.",
+      icon: '🤖',
+      color: '#0096D6',
+      path: '/challenge/hp-companion',
+      skillLevel: 'beginner',
+      modality: 'text'
+    },
+    {
+      id: 'challenge-hp-amuze',
+      challengeNumber: 3,
+      title: 'HP Challenge 3: HP Amuze – Creative AI Artist',
+      description: "Create stunning visuals and compelling copy in seconds using HP Amuze's AI-powered creative tools.",
+      icon: '🎨',
+      color: '#0096D6',
+      path: '/challenge/hp-amuze',
+      skillLevel: 'intermediate',
+      modality: 'generation'
+    }
+  ]
+
+  // Check if a challenge is implemented
+  const isImplemented = (challengeId: string) => {
+    return [
+      // Standard Challenges
+      'challenge-1', 'challenge-2', 'challenge-3', 'challenge-4', 'challenge-5',
+      'challenge-6', 'challenge-7', 'challenge-8', 'challenge-9', 'challenge-10', 'challenge-11',
+      'challenge-ocr', 'challenge-object-detection', 'challenge-privacy-guardian',
+      'challenge-creative-vision', 'challenge-agent-magic',
+      
+      // Additional Challenges
+      'additional-challenge-1', 'additional-challenge-2', 'additional-challenge-4',
+      'additional-challenge-8', 'additional-challenge-9', 'additional-challenge-10',
+      
+      // HP Challenges
+      'challenge-hp-powerbi', 'challenge-hp-companion', 'challenge-hp-amuze'
+    ].includes(challengeId)
+  }
+  
+  // Check if a challenge is completed
+  const isCompleted = (challengeId: string) => {
+    return userProgress.completedChallenges.includes(challengeId)
+  }
+
+  // Listen for global challenge completion events
+  const handleChallengeCompleted = useCallback((event: CustomEvent<ChallengeCompletedEvent>) => {
+    console.log('Challenge completed event received:', event.detail);
+    // Force refresh of completed challenges 
+    setCompletedCount(prevCount => prevCount + 1);
+    // You can also use a state to track which challenge was recently completed for additional effects
+  }, []);
+
+  // Set up event listener for challenge completion
+  useEffect(() => {
+    document.addEventListener(CHALLENGE_COMPLETED_EVENT, handleChallengeCompleted as EventListener);
+    return () => {
+      document.removeEventListener(CHALLENGE_COMPLETED_EVENT, handleChallengeCompleted as EventListener);
+    };
+  }, [handleChallengeCompleted]);
+
+  // Update completed count when userProgress changes
+  useEffect(() => {
+    setCompletedCount(userProgress.completedChallenges.length);
+  }, [userProgress]);
+
+  // Handle manual challenge completion
+  const handleMarkAsCompleted = (challengeId: string, challengeName: string) => {
+    // Skip the markChallengeAsCompleted function's return value check
+    // This allows us to mark challenges as completed even if they were previously completed
+    markChallengeAsCompleted(challengeId);
+    
+    // Force a refresh of user progress state
+    setUserProgress({
+      ...userProgress,
+      completedChallenges: [...userProgress.completedChallenges.filter((id: string) => id !== challengeId), challengeId]
+    });
+    
+    // Show success message
+    setCompletionMessage({
+      challengeId,
+      message: `${challengeName} marked as completed!`,
+      isCompleted: true
+    });
+    
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      setCompletionMessage(null);
+    }, 3000);
+  };
+
+  // Handle unchecking a challenge
+  const handleUncheckChallenge = (challengeId: string, challengeName: string) => {
+    // Remove the challenge from completedChallenges
+    const updatedChallenges = userProgress.completedChallenges.filter((id: string) => id !== challengeId);
+    
+    // Update userProgress in localStorage
+    setUserProgress({
+      ...userProgress,
+      completedChallenges: updatedChallenges
+    });
+    
+    // Show success message
+    setCompletionMessage({
+      challengeId,
+      message: `${challengeName} marked as incomplete!`,
+      isCompleted: false
+    });
+    
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      setCompletionMessage(null);
+    }, 3000);
+  };
+
+  // Helper functions to identify challenge types
+  const isVoiceChallenge = (challenge: any) => {
+    return challenge.id.includes('voice') || 
+           challenge.id.includes('dictation') || 
+           challenge.title.includes('Voice') ||
+           challenge.icon === '🔊' || 
+           challenge.icon === '🎙️';
+  };
+
+  const isVideoChallenge = (challenge: any) => {
+    return challenge.id.includes('video') || 
+           challenge.id.includes('tracking') || 
+           challenge.id.includes('detection') ||
+           challenge.title.includes('Object') ||
+           challenge.icon === '📹' || 
+           challenge.icon === '🎬';
+  };
+
+  // Get unique modality types from challenges
+  const getUniqueModalityTypes = () => {
+    const modalitySet = new Set<string>();
+    challenges.forEach(challenge => {
+      if (challenge.modality) {
+        modalitySet.add(challenge.modality);
+      }
+    });
+    return Array.from(modalitySet);
+  };
+
+  // Filter challenges by modality
+  const getFilteredChallenges = () => {
+    if (!activeFilter) return challenges;
+    return challenges.filter(challenge => challenge.modality === activeFilter);
+  };
+
+  // Add custom styles directly in the head to avoid JSX nesting issues
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.innerHTML = scrollStyles;
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, [scrollStyles]);
+
+  // Create a sorted copy of challenges by difficulty level
+  const sortedChallenges = [...challenges].sort((a, b) => {
+    const difficultyOrder = { 'beginner': 0, 'intermediate': 1, 'advanced': 2 };
+    return difficultyOrder[a.skillLevel as keyof typeof difficultyOrder] - difficultyOrder[b.skillLevel as keyof typeof difficultyOrder];
+  });
+
+  return (
+    <div className="flex flex-col">
+      <div className="max-w-7xl mx-auto">
+        <div className="relative mb-16 text-center p-10 rounded-2xl overflow-hidden">
+          {/* Background with gradient overlay */}
+          <div className="absolute inset-0">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-purple-600/90 mix-blend-multiply"></div>
+            <div className="absolute inset-0 ai-pattern"></div>
+          </div>
+        
+          {/* Decorative elements */}
+          <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+            <div className="absolute -top-4 -left-4 w-24 h-24 rounded-full bg-blue-300 opacity-20 blur-xl"></div>
+            <div className="absolute top-1/4 -right-12 w-40 h-40 rounded-full bg-purple-400 opacity-20 blur-xl"></div>
+            <div className="absolute -bottom-8 left-1/3 w-32 h-32 rounded-full bg-cyan-300 opacity-20 blur-xl"></div>
+          </div>
+        
+          {/* Content */}
+          <div className="relative z-10">
+          <h1 className="text-5xl sm:text-6xl font-extrabold mb-6 text-white">
+            Level Up Your <span className="text-cyan-300">AI Superpowers</span>
+          </h1>
+          <p className="text-xl text-white/90 max-w-2xl mx-auto mb-8 leading-relaxed">
+            Welcome to your AI training dojo! Complete challenges, earn bragging rights, 
+            and become the colleague everyone secretly asks for help. No cape required.
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6">
+            <a 
+              href="#challenges" 
+              className="px-8 py-3 bg-white text-blue-600 rounded-lg text-lg font-medium hover:bg-blue-50 transition-all hover:scale-105 shadow-lg flex items-center justify-center w-full sm:w-auto"
+            >
+              Start Your Adventure
+            </a>
+            <div className="flex items-center justify-center gap-3 bg-blue-900/40 backdrop-blur-sm text-white px-6 py-3 rounded-lg shadow-inner w-full sm:w-auto">
+              <div className="bg-blue-500/20 w-10 h-10 rounded-full flex items-center justify-center">
+                <span className="font-bold text-xl">{completedCount}</span>
+              </div>
+              <span className="text-lg">Challenges Completed</span>
+            </div>
+          </div>
+          </div>
+        </div>
+      </div>
+      
+    
+
+export default ChallengeHub;

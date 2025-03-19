@@ -1,0 +1,47 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { ChevronDown, ChevronUp, Play, Download, RefreshCw, Check, Globe, Volume2, Wand2, Mic } from 'lucide-react';
+import { useUserProgress, markChallengeAsCompleted } from '../../../utils/userDataManager';
+import { getOpenAIHeaders } from '../../../services/apiConfig';
+import { getElevenLabsAPIKey } from '../../../utils/apiKeys';
+import axios from 'axios';
+import Confetti from '../../shared/Confetti';
+import ChallengeHeader from '../../shared/ChallengeHeader';
+
+// Eleven Labs voices - these are some popular voices from their library
+const ELEVEN_LABS_VOICES = [
+  { id: 'K4mIm9HZLpIcJUypZOl1', name: 'Jaime', description: 'Conversational, friendly professional tone', gender: 'male' },
+  { id: '2gPFXx8pN3Avh27Dw5Ma', name: 'Oxley', description: 'Dramatic, villainous character voice', gender: 'male' },
+  { id: 'cla3YFxFwdDazSiKsv9U', name: 'Alexander', description: 'Clean, confident, deep masculine voice', gender: 'male' },
+  { id: '5Q0t7uMcjvnagumLfvZi', name: 'Paul', description: 'Warm, natural-sounding male voice', gender: 'male' }
+];
+
+// Language options
+const LANGUAGES = [
+  { id: 'en-US', name: 'English (US)', flag: '🇺🇸' },
+  { id: 'en-GB', name: 'English (UK)', flag: '🇬🇧' },
+  { id: 'es-ES', name: 'Spanish', flag: '🇪🇸' },
+  { id: 'fr-FR', name: 'French', flag: '🇫🇷' },
+  { id: 'de-DE', name: 'German', flag: '🇩🇪' },
+  { id: 'ja-JP', name: 'Japanese', flag: '🇯🇵' }
+];
+
+// Voice Generator component
+const VoiceGeneratorMain: React.FC = () => {
+  // Get the API key for the headers
+  const elevenLabsAPIKey = getElevenLabsAPIKey();
+  
+  // Get user progress
+  const [userProgress, setUserProgress] = useUserProgress();
+  const [completionMessage, setCompletionMessage] = useState<string | null>(null);
+  
+  // Main state
+  const [script, setScript] = useState<string>("");
+  const [scriptPrompt, setScriptPrompt] = useState<string>("");
+  const [selectedVoice, setSelectedVoice] = useState<string>(ELEVEN_LABS_VOICES[0].id);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('en-US');
+  const [isGeneratingScript, setIsGeneratingScript] = useState<boolean>(false);
+  const [isGeneratingVoice, setIsGeneratingVoice] = useState<boolean>(false);
+  const [generatedAudioUrl, setGeneratedAudioUrl] = useState<string | null>(null);
+  const [generatedAudioUrlAlt, setGeneratedAudioUrlAlt] = useState<string | null>(null);
+  const [isVoicesOpen, setIsVoicesOpen] = useState<boolean>(false);
+  const [isLanguagesOpen, setIsLanguagesOpen] = useState<boolean>(false);

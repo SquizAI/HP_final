@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Face-API.js Model Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .status {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .info {
+      background-color: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background-color: #0069d9;
+    }
+    pre {
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Face-API.js Model Test</h1>
+  <p>This page tests if the face-api.js models are loaded correctly.</p>
+  
+  <div>
+    <button id="testLocal">Test Local Models</button>
+    <button id="testCDN">Test CDN Models</button>
+  </div>
+  
+  <div id="results"></div>
+  
+  <script>
+    const resultsElement = document.getElementById('results');
+    
+    function addStatus(message, type) {
+      const statusElement = document.createElement('div');
+      statusElement.className = `status ${type}`;
+      statusElement.textContent = message;
+      resultsElement.appendChild(statusElement);
+    }
+    
+    async function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+    
+    async function testLocalModels() {
+      resultsElement.innerHTML = '';
+      
+      try {
+        addStatus('Loading face-api.js...', 'info');
+        await loadScript('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js');
+        addStatus('face-api.js loaded successfully', 'success');
+        
+        // Check if faceapi exists
+        if (!window.faceapi) {
+          throw new Error('face-api.js did not load correctly');
+        }
+        
+        addStatus('Testing local models in /models/tiny_face_detector...', 'info');
+        
+        try {
+          // Try to load the TinyFaceDetector model from the local path
+          await window.faceapi.loadTinyFaceDetectorModel('/models/tiny_face_detector');
+          addStatus('TinyFaceDetector model loaded successfully from local path!', 'success');
+        } catch (err) {
+          addStatus(`Failed to load TinyFaceDetector model from local path: ${err.message}`, 'error');
+          console.error('Model loading error:', err);
+          
+          // List the directory structure for debugging
+          addStatus('Checking model files...', 'info');
+          const modelFiles = [
+            '/models/tiny_face_detector/model-weights_manifest.json',
+            '/models/tiny_face_detector/model-shard1'
+          ];
+          
+          for (const file of modelFiles) {
+            try {
+              const response = await fetch(file);
+              if (response.ok) {
+                addStatus(`${file} exists and is accessible`, 'success');
+              } else {
+                addStatus(`${file} returned status ${response.status}`, 'error');
+              }
+            } catch (fileErr) {
+              addStatus(`Error checking ${file}: ${fileErr.message}`, 'error');
+            }
+          }
+        }
+      } catch (err) {
+        addStatus(`Error: ${err.message}`, 'error');
+        console.error(err);
+      }
+    }
+    
+    async function testCDNModels() {
+      resultsElement.innerHTML = '';
+      
+      try {
+        addStatus('Loading face-api.js...', 'info');
+        await loadScript('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js');
+        addStatus('face-api.js loaded successfully', 'success');
+        
+        // Check if faceapi exists
+        if (!window.faceapi) {
+          throw new Error('face-api.js did not load correctly');
+        }
+        
+        addStatus('Testing CDN models...', 'info');
+        
+        try {
+          // Try to load the TinyFaceDetector model from CDN
+          await window.faceapi.loadTinyFaceDetectorModel('https://justadudewhohacks.github.io/face-api.js/models');
+          addStatus('TinyFaceDetector model loaded successfully from CDN!', 'success');
+        } catch (err) {
+          addStatus(`Failed to load TinyFaceDetector model from CDN: ${err.message}`, 'error');
+          console.error('CDN model loading error:', err);
+        }
+      } catch (err) {
+        addStatus(`Error: ${err.message}`, 'error');
+        console.error(err);
+      }
+    }
+    
+    document.getElementById('testLocal').addEventListener('click', testLocalModels);
+    document.getElementById('testCDN').addEventListener('click', testCDNModels);
+  </script>
+</body>
+</html> 

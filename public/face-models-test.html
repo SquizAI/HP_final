@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Face API.js Model Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+    }
+    .status-box {
+      margin: 20px 0;
+      padding: 15px;
+      border-radius: 4px;
+    }
+    .status-box pre {
+      margin: 0;
+      white-space: pre-wrap;
+    }
+    .success {
+      background-color: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    .error {
+      background-color: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    .info {
+      background-color: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+    button {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 4px 2px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .video-container {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #video, #canvas {
+      max-width: 100%;
+      margin-top: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    #log {
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 4px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Face API.js Model Test</h1>
+    <div id="status-container"></div>
+    
+    <button id="load-models" onclick="loadModels()">Load Face-API Models</button>
+    <button id="start-camera" onclick="startCamera()" disabled>Start Camera</button>
+    
+    <div class="video-container">
+      <h2>Video Feed</h2>
+      <video id="video" width="640" height="480" autoplay muted></video>
+      <canvas id="canvas" width="640" height="480"></canvas>
+    </div>
+    
+    <div id="log"></div>
+  </div>
+
+  <script>
+    const statusContainer = document.getElementById('status-container');
+    const loadModelsButton = document.getElementById('load-models');
+    const startCameraButton = document.getElementById('start-camera');
+    const videoElement = document.getElementById('video');
+    const canvasElement = document.getElementById('canvas');
+    const logElement = document.getElementById('log');
+    let detectionLoop = null;
+
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = document.createElement('div');
+      logEntry.textContent = `[${timestamp}] ${message}`;
+      logEntry.className = type;
+      logElement.appendChild(logEntry);
+      logElement.scrollTop = logElement.scrollHeight;
+    }
+
+    function showStatus(message, type) {
+      const statusBox = document.createElement('div');
+      statusBox.className = `status-box ${type}`;
+      statusBox.innerHTML = `<pre>${message}</pre>`;
+      statusContainer.appendChild(statusBox);
+    }
+
+    async function loadModels() {
+      log('Loading face-api.js script...');
+      loadModelsButton.disabled = true;
+      
+      try {
+        // Load face-api.js from CDN
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js';
+        script.async = true;
+        
+        const loadScriptPromise = new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = reject;
+        });
+        
+        document.head.appendChild(script);
+        await loadScriptPromise;
+        log('Face-API script loaded successfully', 'success');
+        
+        if (!window.faceapi) {
+          throw new Error('Face-API did not load correctly');
+        }
+        
+        // Try to load models
+        await loadFaceDetectionModels();
+      } catch (error) {
+        log(`Error loading face-api: ${error.message}`, 'error');
+        showStatus(`Error loading face-api.js: ${error.message}`, 'error');
+        loadModelsButton.disabled = false;
+      }
+    }
+    
+    async function loadFaceDetectionModels() {
+      try {
+        log('Loading TinyFaceDetector model...');
+        const modelUrl = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+        await faceapi.nets.tinyFaceDetector.load(modelUrl);
+        log('TinyFaceDetector model loaded successfully', 'success');
+        
+        log('Loading FaceLandmark68 model...');
+        await faceapi.nets.faceLandmark68Net.load(modelUrl);
+        log('FaceLandmark68 model loaded successfully', 'success');
+        
+        showStatus('All models loaded successfully!', 'success');
+        startCameraButton.disabled = false;
+      } catch (error) {
+        log(`Error loading models: ${error.message}`, 'error');
+        showStatus(`Error loading models: ${error.message}`, 'error');
+        loadModelsButton.disabled = false;
+      }
+    }
+    
+    async function startCamera() {
+      try {
+        log('Requesting camera access...');
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: "user"
+          } 
+        });
+        
+        videoElement.srcObject = stream;
+        log('Camera started successfully', 'success');
+        
+        videoElement.onloadedmetadata = () => {
+          log('Video feed loaded');
+          startDetectionLoop();
+        };
+      } catch (error) {
+        log(`Error accessing camera: ${error.message}`, 'error');
+        showStatus(`Camera error: ${error.message}`, 'error');
+      }
+    }
+    
+    async function startDetectionLoop() {
+      log('Starting face detection loop...');
+      
+      if (detectionLoop) {
+        cancelAnimationFrame(detectionLoop);
+      }
+      
+      const ctx = canvasElement.getContext('2d');
+      
+      async function detectFaces() {
+        if (videoElement.paused || videoElement.ended) {
+          detectionLoop = requestAnimationFrame(detectFaces);
+          return;
+        }
+        
+        try {
+          // Draw video to canvas
+          ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+          
+          // Detect faces
+          const detections = await faceapi.detectAllFaces(
+            videoElement,
+            new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 })
+          );
+          
+          if (detections.length > 0) {
+            log(`Detected ${detections.length} faces`);
+            
+            // Draw bounding boxes
+            detections.forEach(detection => {
+              const box = detection.box;
+              ctx.strokeStyle = '#00FF00';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(box.x, box.y, box.width, box.height);
+            });
+          }
+        } catch (error) {
+          log(`Detection error: ${error.message}`, 'error');
+        }
+        
+        detectionLoop = requestAnimationFrame(detectFaces);
+      }
+      
+      detectFaces();
+    }
+  </script>
+</body>
+</html> 

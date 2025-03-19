@@ -1,0 +1,751 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Wand2, Sparkles, Image as ImageIcon, RefreshCw, Check, AlertTriangle, Info, Award, Save, Star, Zap, Lightbulb } from 'lucide-react';
+import { useUserProgress, markChallengeAsCompleted } from '../../../utils/userDataManager';
+import Confetti from '../../shared/Confetti';
+import ChallengeHeader from '../../shared/ChallengeHeader';
+import { generateImage, FluxImageGenerationOptions } from '../../../utils/fluxImageGenerator';
+
+// Example style options for image generation
+const STYLE_OPTIONS = [
+  { id: 'vivid', name: 'Vivid', description: 'Bright, vibrant colors with heightened contrast' },
+  { id: 'natural', name: 'Natural', description: 'True-to-life colors and realistic lighting' },
+  { id: 'artistic', name: 'Artistic', description: 'Creative interpretation with painterly qualities' },
+  { id: 'professional', name: 'Professional', description: 'Clean, corporate-friendly aesthetics' },
+  { id: 'cinematic', name: 'Cinematic', description: 'Dramatic lighting with movie-like framing' },
+  { id: 'vintage', name: 'Vintage', description: 'Retro aesthetics with nostalgic qualities' }
+];
+
+// Image ratio options
+const RATIO_OPTIONS = [
+  { id: 'square', name: 'Square', description: '1:1 ratio - ideal for social media posts' },
+  { id: 'landscape', name: 'Landscape', description: '16:9 ratio - great for presentations and banners' },
+  { id: 'portrait', name: 'Portrait', description: '9:16 ratio - perfect for mobile and stories' }
+];
+
+// Sample prompts to inspire users
+const SAMPLE_PROMPTS = [
+  {
+    id: 'business1',
+    category: 'Business',
+    prompt: 'A diverse team of professionals collaborating on a digital project in a modern workspace with holographic displays',
+    description: 'Team Collaboration',
+    recommendedModel: 'Ideogram' // Visual scene
+  },
+  {
+    id: 'business2',
+    category: 'Business',
+    prompt: 'Futuristic office space with sustainable design elements, plants integrated with technology, and natural lighting',
+    description: 'Modern Workspace',
+    recommendedModel: 'Ideogram' // Visual scene
+  },
+  {
+    id: 'technology1',
+    category: 'Technology',
+    prompt: 'Cutting-edge AI robot assistant helping a human with daily tasks in a smart home environment',
+    description: 'AI Assistant',
+    recommendedModel: 'Ideogram' // Visual scene
+  },
+  {
+    id: 'technology2',
+    category: 'Technology',
+    prompt: 'Abstract visualization of data analytics with glowing connections and nodes forming insights',
+    description: 'Data Visualization',
+    recommendedModel: 'Ideogram' // Visual scene
+  },
+  {
+    id: 'creative1',
+    category: 'Creative',
+    prompt: 'An imaginative blend of natural landscapes and technology, where trees have digital elements and streams flow with data',
+    description: 'Digital Nature',
+    recommendedModel: 'Ideogram' // Visual scene
+  },
+  {
+    id: 'creative2',
+    category: 'Creative',
+    prompt: "A surreal interpretation of brainstorming, with lightbulbs growing like plants from a person's head in a painterly style",
+    description: 'Creative Thinking',
+    recommendedModel: 'Ideogram' // Visual scene
+  },
+  {
+    id: 'marketing1',
+    category: 'Marketing',
+    prompt: 'Eye-catching product showcase of an innovative smartphone with holographic display in a minimalist setting',
+    description: 'Product Showcase',
+    recommendedModel: 'Ideogram' // Visual scene
+  },
+  {
+    id: 'marketing2',
+    category: 'Marketing',
+    prompt: 'A compelling brand story visualized as a journey through various scenes connected by a golden thread',
+    description: 'Brand Storytelling',
+    recommendedModel: 'Ideogram' // Visual scene
+  },
+  {
+    id: 'typography1',
+    category: 'Typography',
+    prompt: 'Modern minimalist logo with the text "FLUX CREATIVE" in a clean sans-serif font with subtle gradients',
+    description: 'Logo Design',
+    recommendedModel: 'Recraft' // Text-focused
+  },
+  {
+    id: 'typography2',
+    category: 'Typography',
+    prompt: 'Inspirational quote "Embrace the Journey" designed as elegant typography against a soft background',
+    description: 'Quote Design',
+    recommendedModel: 'Recraft' // Text-focused
+  }
+];
+
+// Example generation tips
+const GENERATION_TIPS = [
+  { id: 'specificity', title: 'Be Specific', description: 'Include details about subjects, setting, lighting, perspective, and style' },
+  { id: 'atmosphere', title: 'Set the Atmosphere', description: 'Use descriptive words for mood, time of day, and environment' },
+  { id: 'technical', title: 'Add Technical Details', description: 'Terms like "8K resolution", "photorealistic", "depth of field" improve quality' },
+  { id: 'composition', title: 'Guide Composition', description: 'Mention foreground, background, framing, and focal points' },
+  { id: 'revise', title: 'Revise & Refine', description: "If results aren't ideal, try adjusting your prompt with more specificity" }
+];
+
+// Function to save generated images (mock implementation)
+const saveImage = async (imageUrl: string) => {
+  try {
+    // In a real app, this would save to a server or download the file
+    // For now, we'll just simulate by opening in a new tab
+    window.open(imageUrl, '_blank');
+    return true;
+  } catch (error) {
+    console.error('Error saving image:', error);
+    return false;
+  }
+};
+
+// Main component for the Creative Vision challenge
+const CreativeVisionMain: React.FC = () => {
+  // User progress tracking
+  const [userProgress] = useUserProgress();
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const [showConfetti, setShowConfetti] = useState<boolean>(false);
+  
+  // Image generation state
+  const [prompt, setPrompt] = useState<string>('');
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Generation options
+  const [selectedStyle, setSelectedStyle] = useState<string>('vivid');
+  const [selectedRatio, setSelectedRatio] = useState<string>('square');
+  const [useIdeogram, setUseIdeogram] = useState<boolean>(true);
+  const [creativeMode, setCreativeMode] = useState<boolean>(false);
+  
+  // Gallery of generated images
+  const [generatedGallery, setGeneratedGallery] = useState<Array<{id: string, prompt: string, imageUrl: string}>>([]);
+  
+  // Refs
+  const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Check if challenge is already completed
+  useEffect(() => {
+    if (userProgress.completedChallenges.includes('challenge-creative-vision')) {
+      setIsCompleted(true);
+    }
+  }, [userProgress]);
+  
+  // Function to suggest the best model based on prompt content
+  const suggestBestModel = (promptText: string): 'Ideogram' | 'Recraft' => {
+    const textLower = promptText.toLowerCase();
+    
+    // Keywords that suggest text-focused content (better for Recraft)
+    const textKeywords = [
+      'text', 'typography', 'font', 'logo', 'lettering', 'title', 'heading',
+      'quote', 'slogan', 'word', 'letter', 'typeface', 'caption', 'serif'
+    ];
+    
+    // Check if any text keywords are present
+    const hasTextKeywords = textKeywords.some(keyword => textLower.includes(keyword));
+    
+    // If text keywords are present or the prompt is short (likely text-focused), suggest Recraft
+    if (hasTextKeywords || promptText.length < 40) {
+      return 'Recraft';
+    }
+    
+    // Default to Ideogram for most visual content
+    return 'Ideogram';
+  };
+  
+  // Function to auto-select the best model based on current prompt
+  const handleAutoSelectModel = () => {
+    if (!prompt.trim()) return;
+    
+    const recommendedModel = suggestBestModel(prompt);
+    setUseIdeogram(recommendedModel === 'Ideogram');
+    
+    // Show feedback to the user
+    setSuccessMessage(`Model automatically set to ${recommendedModel} based on your prompt content`);
+    
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      setSuccessMessage(null);
+    }, 3000);
+  };
+  
+  // Generate image based on prompt
+  const handleGenerateImage = async () => {
+    // Validate prompt
+    if (!prompt.trim()) {
+      setError('Please enter a prompt to generate an image');
+      promptInputRef.current?.focus();
+      return;
+    }
+    
+    // Clear previous states
+    setError(null);
+    setSuccessMessage(null);
+    setIsGenerating(true);
+    setGeneratedImage(null);
+    
+    try {
+      // Parse ratio option to get proper size format
+      const size = selectedRatio;
+      
+      // Prepare generation options for Flux Image Generator
+      const options: FluxImageGenerationOptions = {
+        size,
+        style: selectedStyle,
+        quality: 'standard',
+        // Use the user selected model
+        useIdeogram: useIdeogram
+      };
+      
+      // Add creative enhancements to prompt if creative mode is on
+      let enhancedPrompt = prompt;
+      if (creativeMode) {
+        // Add stylistic elements to prompt
+        const enhancements = [
+          "highly detailed",
+          "professional lighting",
+          "high resolution",
+          selectedStyle === 'artistic' ? "artistic interpretation" : "",
+          selectedStyle === 'cinematic' ? "cinematic composition with dramatic lighting" : "",
+          selectedStyle === 'vintage' ? "vintage aesthetic with nostalgic qualities" : "",
+          selectedStyle === 'professional' ? "corporate-friendly, clean aesthetic" : ""
+        ].filter(Boolean);
+        
+        enhancedPrompt = `${prompt}. ${enhancements.join(", ")}.`;
+      }
+      
+      // Call the image generation API with the flux generator
+      const imageUrl = await generateImage(enhancedPrompt, options);
+      
+      // Update state with results
+      setGeneratedImage(imageUrl);
+      
+      // Show model-specific success message
+      const modelName = useIdeogram ? 'Ideogram V2' : 'Recraft';
+      setSuccessMessage(`Image generated successfully using ${modelName}!`);
+      
+      // Add to gallery
+      const newImage = {
+        id: Date.now().toString(),
+        prompt: enhancedPrompt,
+        imageUrl
+      };
+      setGeneratedGallery(prev => [newImage, ...prev].slice(0, 8)); // Keep the most recent 8
+      
+    } catch (err) {
+      console.error('Error generating image:', err);
+      setError('Failed to generate image. Please try again with a different prompt or check your connection.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+  
+  // Use a sample prompt
+  const handleUseSamplePrompt = (samplePrompt: string, recommendedModel?: string) => {
+    setPrompt(samplePrompt);
+    
+    // Set the model based on the recommendation if provided
+    if (recommendedModel) {
+      setUseIdeogram(recommendedModel === 'Ideogram');
+    }
+    
+    promptInputRef.current?.focus();
+    // Scroll to prompt input
+    promptInputRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+  
+  // Handle completing the challenge
+  const handleCompleteChallenge = () => {
+    // Mark the challenge as completed
+    markChallengeAsCompleted('challenge-creative-vision');
+    setIsCompleted(true);
+    
+    // Show confetti
+    setShowConfetti(true);
+    
+    // Reset confetti after 5 seconds
+    setTimeout(() => {
+      setShowConfetti(false);
+    }, 5000);
+  };
+  
+  // Save the currently generated image
+  const handleSaveImage = async () => {
+    if (!generatedImage) return;
+    
+    const success = await saveImage(generatedImage);
+    if (success) {
+      setSuccessMessage('Image opened in a new tab. You can save it from there.');
+    } else {
+      setError('Failed to save the image. Please try again or right-click and save it manually.');
+    }
+  };
+  
+  return (
+    <div className="max-w-6xl mx-auto p-4">
+      {/* Confetti animation when challenge is completed */}
+      <Confetti active={showConfetti} />
+      
+      {/* Header with Challenge Information */}
+      <ChallengeHeader
+        title="Challenge # 2: Creative Vision AI – Turn Ideas Into Images!"
+        icon={<Wand2 className="h-6 w-6 text-purple-600" />}
+        challengeId="challenge-creative-vision"
+        isCompleted={isCompleted}
+        setIsCompleted={setIsCompleted}
+        onCompleteChallenge={handleCompleteChallenge}
+      />
+      
+      {/* Main content */}
+      <div className="mt-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center">
+            <Wand2 className="mr-2 text-purple-600" />
+            Challenge # 2: Creative Vision AI – Turn Ideas Into Images!
+          </h1>
+          <p className="text-gray-600">
+            Transform your ideas into stunning visuals with AI-powered image generation. Just describe what you want to see, and watch as artificial intelligence brings your imagination to life.
+          </p>
+          {isCompleted && (
+            <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+              <Check size={16} className="mr-1" /> Challenge completed!
+            </div>
+          )}
+          
+          {/* How AI Works for You Section */}
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <h3 className="text-lg font-semibold text-blue-800 mb-2 flex items-center">
+              <Zap className="mr-2 h-5 w-5" />
+              How AI Works for You
+            </h3>
+            <p className="text-blue-700 text-sm">
+              Creative Vision AI uses advanced machine learning models that have been trained on millions of images. When you enter a text prompt, the AI analyzes your description, breaking it down into visual concepts, styles, and compositions. It then generates a completely new image that matches your description - no templates or pre-existing images are used!
+            </p>
+          </div>
+          
+          {/* Challenge Steps Quick View */}
+          <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-100">
+            <h3 className="text-lg font-semibold text-purple-800 mb-2 flex items-center">
+              <Star className="mr-2 h-5 w-5" />
+              Challenge Steps Quick View
+            </h3>
+            <ol className="list-decimal ml-5 text-purple-700 space-y-1">
+              <li>Explore how AI can transform text descriptions into images</li>
+              <li>Write a descriptive prompt for what you want to create</li>
+              <li>Choose your style and aspect ratio settings</li>
+              <li>Generate your image and refine if needed</li>
+              <li>Save your creation to use in your projects</li>
+            </ol>
+            <div className="mt-3 text-center">
+              <button 
+                onClick={() => promptInputRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium"
+              >
+                Take the Challenge
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main content area */}
+          <div className="lg:col-span-2">
+            <div className="relative">
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium">Step 2</div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="p-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Image Generator</h2>
+                
+                {/* Prompt input */}
+                <div className="mb-5">
+                  <label htmlFor="prompt-input" className="block text-sm font-medium text-gray-700 mb-1">
+                    Describe the image you want to create
+                  </label>
+                  <textarea
+                    id="prompt-input"
+                    ref={promptInputRef}
+                    className="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="Be descriptive! For example: A futuristic office space with employees using holographic displays, bright lighting, modern architecture with plants integrated throughout the space..."
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                  />
+                  <div className="flex justify-between mt-2 text-sm text-gray-500">
+                    <span>Pro tip: The more details, the better the results</span>
+                    <span>{prompt.length} characters</span>
+                  </div>
+                </div>
+                
+                {/* Generation options */}
+                <div className="mb-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Style selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Style
+                    </label>
+                    <select
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      value={selectedStyle}
+                      onChange={(e) => setSelectedStyle(e.target.value)}
+                    >
+                      {STYLE_OPTIONS.map(style => (
+                        <option key={style.id} value={style.id}>
+                          {style.name} - {style.description}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Ratio selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Aspect Ratio
+                    </label>
+                    <select
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      value={selectedRatio}
+                      onChange={(e) => setSelectedRatio(e.target.value)}
+                    >
+                      {RATIO_OPTIONS.map(ratio => (
+                        <option key={ratio.id} value={ratio.id}>
+                          {ratio.name} - {ratio.description}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                
+                {/* Model toggle */}
+                <div className="mb-5">
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    Generation Model
+                    <div className="relative ml-2 group">
+                      <Info size={16} className="text-gray-400 hover:text-gray-600 cursor-help" />
+                      <div className="absolute left-0 bottom-full mb-2 w-64 bg-white p-2 rounded shadow-lg border border-gray-200 hidden group-hover:block z-10 text-xs text-gray-600">
+                        <p className="mb-1"><strong>Ideogram V2:</strong> Choose for most visual content, landscapes, scenes, people, objects, or abstract imagery.</p>
+                        <p><strong>Recraft:</strong> Better for designs with text as the focal point, logos, typography, quotes, or when text clarity is important.</p>
+                      </div>
+                    </div>
+                  </label>
+                  <div className="flex gap-4">
+                    <div className="flex items-center">
+                      <input
+                        id="model-ideogram"
+                        type="radio"
+                        checked={useIdeogram}
+                        onChange={() => setUseIdeogram(true)}
+                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+                      />
+                      <label htmlFor="model-ideogram" className="ml-2 block text-sm text-gray-700">
+                        Ideogram V2 (better for visual imagery and scenes)
+                      </label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        id="model-recraft"
+                        type="radio"
+                        checked={!useIdeogram}
+                        onChange={() => setUseIdeogram(false)}
+                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+                      />
+                      <label htmlFor="model-recraft" className="ml-2 block text-sm text-gray-700">
+                        Recraft (better for text-heavy designs and typography)
+                      </label>
+                    </div>
+                  </div>
+                  {prompt.trim() && (
+                    <button 
+                      onClick={handleAutoSelectModel}
+                      className="mt-2 text-sm text-purple-600 hover:text-purple-800"
+                    >
+                      Auto-select best model based on prompt
+                    </button>
+                  )}
+                </div>
+                
+                {/* Creative mode toggle */}
+                <div className="mb-5">
+                  <div className="flex items-center">
+                    <input
+                      id="creative-mode"
+                      type="checkbox"
+                      checked={creativeMode}
+                      onChange={(e) => setCreativeMode(e.target.checked)}
+                      className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="creative-mode" className="ml-2 block text-sm text-gray-700">
+                      Enable Creative Enhancement (AI will automatically enhance your prompt)
+                    </label>
+                  </div>
+                </div>
+                
+                {/* Generate button */}
+                <div className="flex flex-col sm:flex-row gap-3 mb-5">
+                  <button
+                    onClick={handleGenerateImage}
+                    disabled={isGenerating || !prompt.trim()}
+                    className={`flex-1 px-4 py-2 flex items-center justify-center font-medium rounded-md text-white ${
+                      isGenerating || !prompt.trim()
+                        ? 'bg-purple-400 cursor-not-allowed'
+                        : 'bg-purple-600 hover:bg-purple-700'
+                    }`}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <RefreshCw className="animate-spin mr-2 h-5 w-5" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-5 w-5" />
+                        Generate Image
+                      </>
+                    )}
+                  </button>
+                  
+                  {generatedImage && (
+                    <button
+                      onClick={handleSaveImage}
+                      className="px-4 py-2 flex items-center justify-center border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                    >
+                      <Save className="mr-2 h-5 w-5" />
+                      Save Image
+                    </button>
+                  )}
+                </div>
+                
+                {/* Error message */}
+                {error && (
+                  <div className="mb-5 bg-red-50 border-l-4 border-red-400 p-4 rounded">
+                    <div className="flex items-center">
+                      <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
+                      <p className="text-sm text-red-700">{error}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Success message */}
+                {successMessage && (
+                  <div className="mb-5 bg-green-50 border-l-4 border-green-400 p-4 rounded">
+                    <div className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-2" />
+                      <p className="text-sm text-green-700">{successMessage}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Generated image display */}
+                {isGenerating ? (
+                  <div className="border rounded-lg p-8 flex flex-col items-center justify-center bg-gray-50">
+                    <RefreshCw className="animate-spin text-purple-600 mb-4 h-12 w-12" />
+                    <p className="text-lg text-gray-600">Creating your masterpiece...</p>
+                    <p className="text-sm text-gray-500 mt-2">This typically takes 5-15 seconds</p>
+                  </div>
+                ) : generatedImage ? (
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="bg-gray-100 px-4 py-2 border-b flex justify-between items-center">
+                      <div className="text-sm font-medium text-gray-700">Generated Image</div>
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                          {selectedStyle}
+                        </span>
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                          {RATIO_OPTIONS.find(r => r.id === selectedRatio)?.name || 'Custom'}
+                        </span>
+                      </div>
+                    </div>
+                    <img
+                      src={generatedImage}
+                      alt={prompt}
+                      className="w-full h-auto"
+                    />
+                    <div className="p-3 bg-white border-t">
+                      <details className="text-sm">
+                        <summary className="cursor-pointer text-gray-700 font-medium">
+                          View prompt used
+                        </summary>
+                        <p className="mt-2 text-gray-600 p-2 bg-gray-50 rounded">{prompt}</p>
+                      </details>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border rounded-lg p-8 flex flex-col items-center justify-center bg-gray-50">
+                    <ImageIcon className="text-gray-400 mb-4 h-16 w-16" />
+                    <p className="text-lg text-gray-600">Enter a prompt and generate your first image</p>
+                    <p className="text-sm text-gray-500 mt-2">Images will appear here</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Sample prompts section */}
+            <div className="relative mt-6">
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium">Step 3</div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="p-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Sample Prompts</h2>
+                <p className="text-gray-600 mb-4">
+                  Need inspiration? Try one of these prompts or use them as a starting point:
+                </p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {SAMPLE_PROMPTS.map((sample) => (
+                    <div
+                      key={sample.id}
+                      className="border rounded-lg p-3 hover:bg-purple-50 cursor-pointer transition-colors"
+                      onClick={() => handleUseSamplePrompt(sample.prompt, sample.recommendedModel)}
+                    >
+                      <div className="font-medium text-purple-700 mb-1 flex items-center">
+                        <Lightbulb className="h-4 w-4 mr-1" />
+                        {sample.description}
+                      </div>
+                      <p className="text-sm text-gray-600 line-clamp-2">{sample.prompt}</p>
+                      <div className="mt-2 flex justify-between items-center">
+                        <div className="text-xs text-gray-500">
+                          Category: {sample.category}
+                        </div>
+                        <div className={`text-xs px-2 py-1 rounded-full ${
+                          sample.recommendedModel === 'Ideogram' 
+                            ? 'bg-purple-100 text-purple-800' 
+                            : 'bg-indigo-100 text-indigo-800'
+                        }`}>
+                          Best: {sample.recommendedModel}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            </div>
+            
+            {/* Generation history */}
+            {generatedGallery.length > 0 && (
+              <div className="relative mt-6">
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium">Step 4</div>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="p-6">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-4">Your Gallery</h2>
+                    <div className="grid grid-cols-2 gap-4">
+                      {generatedGallery.map((item) => (
+                        <div key={item.id} className="border rounded-lg overflow-hidden">
+                          <img
+                            src={item.imageUrl}
+                            alt={item.prompt}
+                            className="w-full h-48 object-cover"
+                          />
+                          <div className="p-2">
+                            <p className="text-xs text-gray-500 line-clamp-2">{item.prompt}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Right sidebar */}
+          <div className="space-y-6">
+            
+            {/* Step 1: Learn */}
+            <div className="relative">
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium">Step 1</div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="p-5">
+                  <h3 className="text-lg font-medium text-gray-800 mb-3">Prompt Writing Tips</h3>
+                  <div className="space-y-3">
+                    {GENERATION_TIPS.map((tip) => (
+                      <div key={tip.id} className="text-sm">
+                        <h4 className="font-medium text-purple-700">{tip.title}</h4>
+                        <p className="text-gray-600">{tip.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Complete challenge card */}
+            <div className="relative">
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-3 py-1 rounded-full text-xs font-medium">Final Step</div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="p-5">
+                  <h3 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
+                    <Award size={18} className="mr-2 text-amber-500" />
+                    Complete the Challenge
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    <button
+                      onClick={handleCompleteChallenge}
+                      disabled={isCompleted}
+                      className={`w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                        isCompleted
+                          ? 'bg-green-500 cursor-not-allowed'
+                          : 'bg-purple-600 hover:bg-purple-700'
+                      }`}
+                    >
+                      {isCompleted ? 'Challenge Completed!' : 'Complete Challenge'}
+                    </button>
+                    
+                    <div className="bg-gray-50 p-3 rounded text-gray-600 text-sm">
+                      <p>Generate at least one image to complete this challenge and unlock your creative potential!</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Business impact */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="p-5">
+                <h3 className="text-lg font-medium text-gray-800 mb-3">Business Impact</h3>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  <li className="flex items-start">
+                    <Check size={16} className="mr-2 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Create custom marketing visuals in seconds without needing a design team</span>
+                  </li>
+                  <li className="flex items-start">
+                    <Check size={16} className="mr-2 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Generate product concept visualizations to accelerate idea validation</span>
+                  </li>
+                  <li className="flex items-start">
+                    <Check size={16} className="mr-2 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Enhance presentations with custom imagery tailored to your message</span>
+                  </li>
+                  <li className="flex items-start">
+                    <Check size={16} className="mr-2 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>Create consistent visual branding across all communication channels</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CreativeVisionMain;

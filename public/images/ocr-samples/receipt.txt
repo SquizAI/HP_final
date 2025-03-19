@@ -1,0 +1,26 @@
+RECEIPT
+
+HP STORE
+123 Tech Avenue
+Palo Alto, CA 94304
+
+Order #: 875429
+Date: March 18, 2025
+Time: 14:35
+
+ITEM                   QTY    PRICE    TOTAL
+----------------------------------------------
+HP Elite Laptop        1      $1,299    $1,299
+Extra Charger          1      $79       $79
+Carrying Case          1      $49       $49
+Extended Warranty      1      $199      $199
+----------------------------------------------
+                      Subtotal:         $1,626
+                      Tax (8.5%):       $138.21
+                      TOTAL:            $1,764.21
+
+Payment Method: Credit Card
+Card Number: XXXX-XXXX-XXXX-4821
+
+Thank you for shopping at HP Store!
+Your feedback matters to us.

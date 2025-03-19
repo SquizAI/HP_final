@@ -1,0 +1,15 @@
+HP AI DOCUMENT
+
+This is a sample text document created for the OCR Assistant Challenge. 
+The OCR feature allows you to convert images of text into editable text format.
+
+Key Features:
+- Extract text from printed documents
+- Process handwritten notes
+- Edit and copy the extracted text
+- Export results to other applications
+
+Complete this challenge by processing at least two different images.
+One of them should be a handwritten document.
+
+Thank you for trying the HP AI OCR Assistant!
