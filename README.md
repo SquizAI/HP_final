@@ -65,17 +65,33 @@ npm run dev
 
 5. Open your browser and navigate to the URL shown in the terminal (usually `http://localhost:5173`)
 
-## OpenAI API Configuration
+## API Configuration
 
-The Trend Spotter challenge uses OpenAI's GPT-4o model to provide real-time trend analysis and business opportunities. You need an OpenAI API key to use this feature.
+This application uses several AI services that require API keys. Here's how to obtain them:
 
-To get an API key:
-1. Sign up or log in at [OpenAI's platform](https://platform.openai.com/)
-2. Navigate to API keys in your account settings
-3. Create a new API key
-4. Add the key to your `.env` file as `VITE_OPENAI_API_KEY=your_key_here`
+### OpenAI API Key
+The Trend Spotter challenge uses OpenAI's GPT-4o model to provide real-time trend analysis.
+Get your key at: https://platform.openai.com/api-keys
 
-**Note:** If you don't provide an API key, the challenge will fall back to using pre-defined sample responses.
+### ElevenLabs API Key
+Used for voice generation capabilities.
+Get your key at: https://elevenlabs.io/app/api-key
+
+### Fal.ai API Key
+Used for image generation features.
+Get your key at: https://www.fal.ai/dashboard/keys
+
+### Deepgram API Key
+Used for speech recognition capabilities.
+Get your key at: https://console.deepgram.com/signup
+
+### Gemini API Key
+Used for accessing Google's Gemini AI model.
+Get your key at: https://aistudio.google.com/app/apikey
+
+After obtaining your keys, add them to the `.env` file as shown in the `.env.example` file.
+
+**Note:** If you don't provide an API key for a particular service, the related challenges will fall back to using pre-defined sample responses when possible.
 
 ## Tech Stack
 
